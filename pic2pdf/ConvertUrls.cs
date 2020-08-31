@@ -6,12 +6,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using iText.IO.Image;
-using iText.Kernel.Geom;
 using iText.Kernel.Pdf;
-using iText.Layout;
-using iText.Layout.Borders;
-using iText.Layout.Element;
 using Newtonsoft.Json;
 using System.Net;
 
@@ -24,67 +19,39 @@ namespace img2pdf
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-            log.LogInformation("[convertUrls] trigger function");
+            log.LogInformation("[convertUrls] Starting...");
 
             StreamReader reader = new StreamReader(req.Body);
             string json = reader.ReadToEnd();
             string[] urls = JsonConvert.DeserializeObject<string[]>(json);
 
-            ///
-
             using (MemoryStream ms = new MemoryStream())
             using (PdfWriter writer = new PdfWriter(ms))
             {
                 PdfDocument pdfDocument = new PdfDocument(writer);
-                Document document = null;
 
                 foreach (var url in urls)
                 {
                     log.LogInformation($" - processing {url}");
 
                     Uri uri = new Uri(url);
-                    string fileExtension = System.IO.Path.GetExtension(uri.LocalPath).ToLower();
+                    string fileExtension = Path.GetExtension(uri.LocalPath).ToLower();
 
                     if (fileExtension == ".pdf")
                     {
-                        using (WebClient wc = new WebClient())
-                        {
-                            using (var pdfReader = new PdfReader(wc.OpenRead(url)))
-                            {
-                                PdfDocument src = new PdfDocument(pdfReader);
-                                src.CopyPagesTo(1, src.GetNumberOfPages(), pdfDocument);
+                        log.LogInformation($" - appending existing PDF pages");
 
-                                src.Close();
-                            }
-                        }
+                        PdfUtilities.AppendPagesFromDocument(pdfDocument, url);
                     }
                     else
                     {
-                        // Add image
-                        Image image = new Image(ImageDataFactory
-                           .Create(url))
-                           .SetBorder(Border.NO_BORDER)
-                           .SetAutoScale(true);
-                        image.SetFixedPosition(0, 0);
+                        log.LogInformation($" - appending as an image page");
 
-                        PageSize pageSize = new PageSize(image.GetImageScaledWidth(), image.GetImageScaledHeight());
-                        if (document == null)
-                        {
-                            // first page
-                            document = new Document(pdfDocument, pageSize);
-                            document.SetMargins(0, 0, 0, 0);
-                        }
-                        else
-                        {
-                            // additional pages are handled differently
-                            document.Add(new AreaBreak(new PageSize(pageSize)));
-                        }
-
-                        document.Add(image);
+                        PdfUtilities.AppendImagePage(pdfDocument, url);
                     }
                 }
 
-                document.Close();
+                pdfDocument.Close();
 
                 byte[] payload = ms.ToArray();
                 return new FileContentResult(payload, "application/pdf")
