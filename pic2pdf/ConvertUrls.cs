@@ -42,9 +42,13 @@ namespace img2pdf
                 {
                     log.LogInformation($" - processing {url}");
 
-                    if (url.ToLower().EndsWith(".pdf"))
+                    Uri uri = new Uri(url);
+                    string fileExtension = System.IO.Path.GetExtension(uri.LocalPath).ToLower();
+
+                    if (fileExtension == ".pdf")
                     {
-                        using(WebClient wc = new WebClient()) {
+                        using (WebClient wc = new WebClient())
+                        {
                             using (var pdfReader = new PdfReader(wc.OpenRead(url)))
                             {
                                 PdfDocument src = new PdfDocument(pdfReader);
