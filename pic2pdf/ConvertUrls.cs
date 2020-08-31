@@ -13,6 +13,7 @@ using iText.Layout;
 using iText.Layout.Borders;
 using iText.Layout.Element;
 using Newtonsoft.Json;
+using System.Net;
 
 namespace img2pdf
 {
@@ -41,27 +42,42 @@ namespace img2pdf
                 {
                     log.LogInformation($" - processing {url}");
 
-                    // Add image
-                    Image image = new Image(ImageDataFactory
-                       .Create(url))
-                       .SetBorder(Border.NO_BORDER)
-                       .SetAutoScale(true);
-                    image.SetFixedPosition(0, 0);
-
-                    PageSize pageSize = new PageSize(image.GetImageScaledWidth(), image.GetImageScaledHeight());
-                    if (document == null)
+                    if (url.ToLower().EndsWith(".pdf"))
                     {
-                        // first page
-                        document = new Document(pdfDocument, pageSize);
-                        document.SetMargins(0, 0, 0, 0);
+                        using(WebClient wc = new WebClient()) {
+                            using (var pdfReader = new PdfReader(wc.OpenRead(url)))
+                            {
+                                PdfDocument src = new PdfDocument(pdfReader);
+                                src.CopyPagesTo(1, src.GetNumberOfPages(), pdfDocument);
+
+                                src.Close();
+                            }
+                        }
                     }
                     else
                     {
-                        // additional pages are handled differently
-                        document.Add(new AreaBreak(new PageSize(pageSize)));
-                    }
+                        // Add image
+                        Image image = new Image(ImageDataFactory
+                           .Create(url))
+                           .SetBorder(Border.NO_BORDER)
+                           .SetAutoScale(true);
+                        image.SetFixedPosition(0, 0);
 
-                    document.Add(image);
+                        PageSize pageSize = new PageSize(image.GetImageScaledWidth(), image.GetImageScaledHeight());
+                        if (document == null)
+                        {
+                            // first page
+                            document = new Document(pdfDocument, pageSize);
+                            document.SetMargins(0, 0, 0, 0);
+                        }
+                        else
+                        {
+                            // additional pages are handled differently
+                            document.Add(new AreaBreak(new PageSize(pageSize)));
+                        }
+
+                        document.Add(image);
+                    }
                 }
 
                 document.Close();
