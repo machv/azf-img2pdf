@@ -10,7 +10,7 @@ $deploymentFile = New-TemporaryFile
 
 # Create package
 Remove-Item $deploymentFile.FullName
-Compress-Archive -Path "./pic2pdf/bin/Release/netcoreapp3.0/publish/*" -DestinationPath $deploymentFile.FullName
+Compress-Archive -Path "./pic2pdf/bin/Release/net6.0/publish/*" -DestinationPath $deploymentFile.FullName
 
 # Publish
 $functionApp = Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $functionAppName
